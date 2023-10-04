@@ -18,7 +18,13 @@ VERTICALLINEMASK = pygame.mask.from_surface(VERTICALLINE)
 #pygame.Surface.blit(LINE, TRACK)
 
 
-rewardGates = [(HORIZONTALLINEMASK, 88, 150), (VERTICALLINEMASK , 120, 120)]
+rewardGates = [(VERTICALLINEMASK, 175, 275), (HORIZONTALLINEMASK , 180, 180),
+               (VERTICALLINEMASK , 310, 25), (VERTICALLINEMASK , 470, 25),
+               (HORIZONTALLINEMASK , 530, 130), (VERTICALLINEMASK , 430, 125),
+               (HORIZONTALLINEMASK , 260, 240), (VERTICALLINEMASK , 430, 240),
+               (HORIZONTALLINEMASK , 530, 425), (HORIZONTALLINEMASK , 425, 510),
+               (VERTICALLINEMASK , 390, 325), (HORIZONTALLINEMASK , 275, 510),
+               (HORIZONTALLINEMASK, 135,510),(HORIZONTALLINEMASK, 15,360) ]
 
 FINISH = pygame.image.load("imgs/finish.png")
 
@@ -49,6 +55,7 @@ class Car:
         self.angle = 0
         self.x, self.y = self.START_POS
         self.acceleration = 0.1
+        self.score = 0
     
     def rotate(self, left=False, right=False):
         if left:
@@ -94,6 +101,12 @@ class Car:
 
     def bounce(self):
         self.vel = -self.vel
+
+    def get_x_y_orient(self):
+        return self.x, self.y, self.angle
+        
+    def update_score(self, added_score):
+        self.score += added_score
     
 
 def draw(win, images, car):
@@ -109,7 +122,12 @@ def stats(score):
 # Event Loop
 run = True
 clock = pygame.time.Clock()
-images = [(DESERT, (0, 0)), (TRACK, (0, 0)), (FINISH, (88, 250)), (TRACK_BORDER, (0, 0)),(HORIZONTALLINE, (88,150)), (VERTICALLINE, (120,120))]
+images = [(DESERT, (0, 0)), (TRACK, (0, 0)), (FINISH, (88, 250)), (TRACK_BORDER, (0, 0))]
+
+for gate in rewardGates:
+    image = HORIZONTALLINE if gate[0] == HORIZONTALLINEMASK else VERTICALLINE
+    images.append((image, (gate[1], gate[2])))
+
 car = Car(3, 4)
 
 def move_player(car):
@@ -151,14 +169,19 @@ while run:
     
     if(car.collide(TRACK_BORDER_MASK) != None):
         car.bounce()
-    elif(car.collide(HORIZONTALLINEMASK, 88, 150)!=None):
-        car.bounce()
-    elif(car.collide((VERTICALLINEMASK), 120,120)!=None):
-        car.bounce()
+    
+    for gate in rewardGates:
+        if(car.collide(gate[0], gate[1], gate[2])):
+            #score update
+            car.update_score(1)
+
     
     car.move()
 
-    
-    
 
-pygame.quit()
+
+
+
+
+
+pygame.quit()   
