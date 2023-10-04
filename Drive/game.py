@@ -19,6 +19,7 @@ VERTICALLINEMASK = pygame.mask.from_surface(VERTICALLINE)
 
 
 rewardGates = [(HORIZONTALLINEMASK, 88, 150), (VERTICALLINEMASK , 120, 120)]
+
 FINISH = pygame.image.load("imgs/finish.png")
 
 CAR_SCALE_FACTOR = 0.6
@@ -100,6 +101,9 @@ def draw(win, images, car):
         win.blit(img, pos)
     
     car.draw(win)
+
+def stats(score):
+    text_font = pygame.font.SysFont('arial', 12)
 
 
 # Event Loop
