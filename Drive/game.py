@@ -1,7 +1,8 @@
 import pygame
 import time
 import math
-from utils import scale_image, blit_rotate_center
+from utils import scale_image, blit_rotate_center, sign
+from Vector2d import Vector2D
 
 DESERT = scale_image(pygame.image.load("imgs/desert.png"), 2)
 # Edit this scale factor to fit own screen
@@ -38,16 +39,21 @@ FPS = 60
 
 class Car:
     IMG = RED_CAR
-    START_POS = (140, 200)
+    START_POS = Vector2D(140, 200)
 
-    def __init__(self, max_vel, rotation_vel) -> None:
+    def __init__(self, max_vel, rotation_vel, max_grip = 0.05) -> None:
         self.img = self.IMG
         self.max_vel = max_vel
-        self.vel = 0
+        self.vel = Vector2D(0, 0)
         self.rotational_vel = rotation_vel
         self.angle = 0
-        self.x, self.y = self.START_POS
+        self.position = Vector2D(self.START_POS.x, self.START_POS.y)
         self.acceleration = 0.1
+        self.grip = max_grip
+
+    def get_direction_vec(self):
+        radians = -math.radians(self.angle + 90)
+        return Vector2D(math.cos(radians), math.sin(radians))
     
     def rotate(self, left=False, right=False):
         if left:
@@ -56,43 +62,56 @@ class Car:
             self.angle -= self.rotational_vel
     
     def draw(self, win):
-        blit_rotate_center(win, self.img, (self.x, self.y), self.angle)
+        blit_rotate_center(win, self.img, (self.position.x, self.position.y), self.angle)
     
     # This function uses trig!
     def move(self):
-        # Convert degrees to radians
-        radians = math.radians(self.angle)
-        # Use Trig
-        vertical = self.vel * math.cos(radians) 
-        horizontal = self.vel * math.sin(radians) 
-        # Weird reasons for subtracting (just trust)
-        self.x -= horizontal
-        self.y -= vertical
+        self.position.x += self.vel.x
+        self.position.y += self.vel.y
+        self.stay_straight()
     
     def move_forward(self):
-        self.vel = min(self.vel + self.acceleration, self.max_vel)
-        # self.acceleration = max(self.acceleration + 0.001, 0.15)
+        direction = self.get_direction_vec()
+        self.vel += self.acceleration * direction
+        self.limit_speed()
     
     def move_backward(self):
-        self.vel = max(self.vel - self.acceleration, -self.max_vel/2)
-        # self.acceleration = min(self.acceleration - 0.001, 0.1)
+        direction = self.get_direction_vec()
+        self.vel -= self.acceleration * direction
+        self.limit_speed()
     
     def reduce_speed(self):
-        if(self.vel >= 0):
-            self.vel = max(self.vel - self.acceleration/2, 0)
+        self.vel *= 0.98
+
+    def limit_speed(self):
+        velDirection = self.vel.getNormalised()
+        directionSign = sign(self.vel.dot(self.get_direction_vec()))
+        speed = self.vel.length
+        if (directionSign > 0):
+            self.vel -= velDirection * max(0, speed - self.max_vel) # max speed forwards
         else:
-            self.vel = min(self.vel + self.acceleration, 0)
+            self.vel -= velDirection * max(0, speed - self.max_vel * 0.5) # max speed backwards
     
+    def stay_straight(self):
+        direction = self.get_direction_vec()
+        tangentVelocity = self.vel.dot(direction.normal())
+        appliedGrip = sign(direction.normal().dot(self.vel)) * min(self.grip, abs(tangentVelocity))
+        self.vel -= appliedGrip * direction.normal()
+
+        # -0.08263467184899997 Vector2D {X:-0.8090169943749475, Y:0.587785252292473}
+        # 6.866876550776764 Vector2D {X:-0.10452846326765347, Y:-0.9945218953682733}
+
     # Takes mask of object car could collide with (TRACK_BORDER_MASK) and its coordinates
-    def collide(self, mask, x=0, y=0):
+    def has_collision(self, mask, x=0, y=0):
         car_mask = pygame.mask.from_surface(self.img)
-        offset = (int(self.x - x), int(self.y - y))
+        offset = (int(self.position.x - x), int(self.position.y - y))
         poi = mask.overlap(car_mask, offset)
-        # If poi (point of intersction) is none, no collision occured
+        # If poi (point of intersection) is none, no collision occured
         return poi
 
     def bounce(self):
-        self.vel = -self.vel
+        self.vel = self.vel * -0.5 # Bounce car off wall by reversing velocity
+        self.position += self.vel.getNormalised() * 5 # Move car out of wall so it doesn't reverse velocity twice 
     
 
 def draw(win, images, car):
@@ -106,7 +125,7 @@ def draw(win, images, car):
 run = True
 clock = pygame.time.Clock()
 images = [(DESERT, (0, 0)), (TRACK, (0, 0)), (FINISH, (88, 250)), (TRACK_BORDER, (0, 0)),(HORIZONTALLINE, (88,150)), (VERTICALLINE, (120,120))]
-car = Car(3, 4)
+car = Car(2.8, 3.4)
 
 def move_player(car):
     keys = pygame.key.get_pressed()
@@ -145,12 +164,12 @@ while run:
 
     draw(WIN, images, car)
     
-    if(car.collide(TRACK_BORDER_MASK) != None):
+    if(car.has_collision(TRACK_BORDER_MASK) != None):
         car.bounce()
-    elif(car.collide(HORIZONTALLINEMASK, 88, 150)!=None):
-        car.bounce()
-    elif(car.collide((VERTICALLINEMASK), 120,120)!=None):
-        car.bounce()
+    # elif(car.has_collision(HORIZONTALLINEMASK, 88, 150)!=None):
+    #     car.bounce()
+    # elif(car.has_collision((VERTICALLINEMASK), 120,120)!=None):
+    #     car.bounce()
     
     car.move()
 
