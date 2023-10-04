@@ -63,11 +63,7 @@ class Car:
             self.angle -= self.rotational_vel
     
     def draw(self, win):
-        blit_rotate_center(win, self.img, (self.x, self.y), self.angle)
-        circle = pygame.draw.circle(surface=win,color="blue",center=(self.x+10,self.y+10),radius=(15))
-        # if(frontLine.clipline((self.x,self.y-100))):
-        #     print("hello")
-
+        blit_rotate_center(win, self.img, (self.position.x, self.position.y), self.angle)
     
     # This function uses trig!
     def move(self):
@@ -76,9 +72,9 @@ class Car:
         self.stay_straight()
     
     def move_forward(self):
-        self.vel = min(self.vel + self.acceleration, self.max_vel)
-
-        # self.acceleration = max(self.acceleration + 0.001, 0.15)
+        direction = self.get_direction_vec()
+        self.vel += self.acceleration * direction
+        self.limit_speed()
     
     def move_backward(self):
         direction = self.get_direction_vec()
@@ -102,9 +98,6 @@ class Car:
         tangentVelocity = self.vel.dot(direction.normal())
         appliedGrip = sign(direction.normal().dot(self.vel)) * min(self.grip, abs(tangentVelocity))
         self.vel -= appliedGrip * direction.normal()
-
-        # -0.08263467184899997 Vector2D {X:-0.8090169943749475, Y:0.587785252292473}
-        # 6.866876550776764 Vector2D {X:-0.10452846326765347, Y:-0.9945218953682733}
 
     # Takes mask of object car could collide with (TRACK_BORDER_MASK) and its coordinates
     def has_collision(self, mask, x=0, y=0):
@@ -169,11 +162,11 @@ while run:
 
     draw(WIN, images, car)
     
-    if(car.collide(TRACK_BORDER_MASK) != None):
+    if(car.has_collision(TRACK_BORDER_MASK) != None):
         car.bounce()
-    # elif(car.collide(HORIZONTALLINEMASK, 88, 150)!=None):
+    # elif(car.has_collision(HORIZONTALLINEMASK, 88, 150)!=None):
     #     # car.bounce()
-    # elif(car.collide((VERTICALLINEMASK), 120,120)!=None):
+    # elif(car.has_collision((VERTICALLINEMASK), 120,120)!=None):
     #     # car.bounce()
     
     car.move()
