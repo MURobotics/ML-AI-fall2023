@@ -3,6 +3,9 @@ import time
 import math
 from utils import scale_image, blit_rotate_center
 
+
+
+#setting up images for use in game.
 DESERT = scale_image(pygame.image.load("imgs/desert.png"), 2)
 # Edit this scale factor to fit own screen
 TRACK_SCALE_FACTOR = 0.7
@@ -12,15 +15,15 @@ TRACK_BORDER_MASK = pygame.mask.from_surface(TRACK_BORDER)
 
 HORIZONTALLINE =  scale_image(pygame.image.load("imgs/horizontalline.png"),.1)
 HORIZONTALLINEMASK = pygame.mask.from_surface(HORIZONTALLINE)
-VERTICALLINE = scale_image(pygame.image.load("imgs/verticalline.png"), .3)
-#VERTICALLINE = pygame.transform.rotate(VERTICALLINE, 90)
+HORIZONTALLINE.fill(color="blue")
+
+VERTICALLINE = scale_image(pygame.image.load("imgs/verticalline.png"), .2)
 VERTICALLINEMASK = pygame.mask.from_surface(VERTICALLINE)
-#pygame.Surface.blit(LINE, TRACK)
+VERTICALLINE.fill(color="blue")
 
 
-
-rewardGates = [(HORIZONTALLINEMASK, 88, 150), (VERTICALLINEMASK , 120, 120)]
 FINISH = pygame.image.load("imgs/finish.png")
+FINISHMASK = pygame.mask.from_surface(FINISH)
 
 CAR_SCALE_FACTOR = 0.6
 RED_CAR = scale_image(pygame.image.load("imgs/red-car.png"), CAR_SCALE_FACTOR)
@@ -49,6 +52,7 @@ class Car:
         self.angle = 0
         self.x, self.y = self.START_POS
         self.acceleration = 0.1
+        self.rewardgate = 0
     
     def rotate(self, left=False, right=False):
         if left:
@@ -58,9 +62,6 @@ class Car:
     
     def draw(self, win):
         blit_rotate_center(win, self.img, (self.x, self.y), self.angle)
-        circle = pygame.draw.circle(surface=win,color="blue",center=(self.x+10,self.y+10),radius=(15))
-        # if(frontLine.clipline((self.x,self.y-100))):
-        #     print("hello")
 
     
     # This function uses trig!
@@ -90,28 +91,90 @@ class Car:
             self.vel = min(self.vel + self.acceleration, 0)
     
     # Takes mask of object car could collide with (TRACK_BORDER_MASK) and its coordinates
-    def collide(self, mask, x=0, y=0):
+    def car_collide(self, mask, x=0, y=0):
         car_mask = pygame.mask.from_surface(self.img)
         offset = (int(self.x - x), int(self.y - y))
         poi = mask.overlap(car_mask, offset)
         # If poi (point of intersction) is none, no collision occured
         return poi
+    
+    #Gets the point of intersection between the car and the track border in four directions and returns those coordinates for each direction.
+    def getWallPointOfIntersection(self,mask,x=0,y=0):
+        car_mask = pygame.mask.from_surface(self.img)
+        offset = [int(self.x - x), int(self.y - y)]
+        rightpoi = None
+        leftpoi = None
+        frontpoi = None
+        rearpoi = None
+        while(rightpoi == None):
+            offset[0] +=1
+            rightpoi = mask.overlap(car_mask,offset)
+        while(leftpoi == None):
+            offset[0] -=1
+            leftpoi = mask.overlap(car_mask,offset)
+        while(frontpoi == None):
+            offset[0] = self.x
+            offset[1] -=1
+            frontpoi = mask.overlap(car_mask,offset)
+        while(rearpoi == None):
+            offset[0] = self.x
+            offset[1] +=1
+            rearpoi = mask.overlap(car_mask,offset)
+        return rightpoi,leftpoi,frontpoi,rearpoi
+    
+
+    #gets the point of intersection between the car and the next reward gate returns that point. NOTE: Doesn't work and runs an infinite loop.
+    def getRewardGatePointOfIntersection(self,mask,x=0,y=0):
+        car_mask = pygame.mask.from_surface(self.img)
+        # print(x)
+        # print(y)
+        offset = [int(self.x - x), int(self.y - y)]
+        frontrewardpoi = None
+        while(frontrewardpoi == None):
+            offset[0] = self.x
+            offset[1] -= 1
+            frontrewardpoi = mask.overlap(car_mask,offset)
+        return frontrewardpoi
+
 
     def bounce(self):
         self.vel = -self.vel
+    
+ 
     
 
 def draw(win, images, car):
     for img, pos in images:
         win.blit(img, pos)
+  
     
     car.draw(win)
+
+
+#draws reward gates to screen. First 30 coordinates are for horizontal lines. rest are for vertical.
+def drawRewardGates(win):
+    i=0
+    rewardgatearray = [(HORIZONTALLINE,(88,150))]
+    arrayofrewardgatecoordinates = [(5,137),(88,117),(8, 205),(8, 263),(9, 318),(15, 376), (47, 425),(78, 455), (124, 501), (163, 542), (276, 513), (278, 482),(278, 461), (279, 423),(428, 451), (429, 500), (431, 540),(538, 514),(537, 483),(537, 446),(538, 410),(536, 368),(537, 331),(274, 248),(535, 151),(538, 133),(534, 99),(177, 112),(177, 148), (175, 191),(176, 247), (89, 95),(275, 531),(386, 336),(517, 531),(474, 246),(406, 247),(401, 164),(502, 165),(496, 18),(406, 19),(298, 18),(173, 282),(87,24)]
+    #print(arrayofrewardgatecoordinates[0][0])
+    rewardgatemaskarray = [(HORIZONTALLINEMASK,(5,137))]
+    for x,y in arrayofrewardgatecoordinates:
+        if i<31:
+            rewardgatearray.append((HORIZONTALLINE,(x,y)))
+            rewardgatemaskarray.append((HORIZONTALLINEMASK,(x,y)))
+        elif i > 31:
+            rewardgatearray.append((VERTICALLINE,(x,y)))
+            rewardgatemaskarray.append((VERTICALLINEMASK,(x,y)))
+        win.blit(rewardgatearray[i][0],(rewardgatearray[i][1]))
+        i+=1
+    return rewardgatemaskarray, arrayofrewardgatecoordinates
+    
 
 
 # Event Loop
 run = True
 clock = pygame.time.Clock()
-images = [(DESERT, (0, 0)), (TRACK, (0, 0)), (FINISH, (88, 250)), (TRACK_BORDER, (0, 0)),(HORIZONTALLINE, (88,150)), (VERTICALLINE, (120,120))]
+images = [(DESERT, (0, 0)), (TRACK, (0, 0)), (FINISH, (88, 250)), (TRACK_BORDER, (0, 0))]
 car = Car(3, 4)
 
 def move_player(car):
@@ -133,8 +196,6 @@ def move_player(car):
     if not moved:
         car.reduce_speed()
 
-
-
 while run:
     # Clock prevents faster than 60 FPS
     clock.tick(FPS)
@@ -147,15 +208,32 @@ while run:
         if event.type == pygame.QUIT:
             run = False
             break
-    
+        #elif is used to get points for reward gates.
+        elif(event.type == pygame.MOUSEBUTTONDOWN):
+            pos = pygame.mouse.get_pos()
+            print(pos)
+        
+  
     move_player(car)
 
     draw(WIN, images, car)
+    rewardgatemaskarray = drawRewardGates(WIN)[0]
+    rewardgatemaskcoordinatearray = drawRewardGates(WIN)[1]
     
-    if(car.collide(TRACK_BORDER_MASK) != None):
+    walldistancearray = [0,0,0,0]
+    walldistancearray[0]= math.dist(car.getWallPointOfIntersection(TRACK_BORDER_MASK)[0],(car.x,car.y))
+    walldistancearray[1]= math.dist(car.getWallPointOfIntersection(TRACK_BORDER_MASK)[1],(car.x,car.y))
+    walldistancearray[2] = math.dist(car.getWallPointOfIntersection(TRACK_BORDER_MASK)[2],(car.x,car.y))
+    walldistancearray[3]= math.dist(car.getWallPointOfIntersection(TRACK_BORDER_MASK)[3],(car.x,car.y))
+    print(walldistancearray)
+
+    #rewardgatedistance still needs some work.
+    #rewardgatedistance = math.dist((car.getRewardGatePointOfIntersection(rewardgatemaskarray[0][0],rewardgatemaskcoordinatearray[0][0],rewardgatemaskcoordinatearray[0][1])),(car.x,car.y))
+    
+    if(car.car_collide(TRACK_BORDER_MASK) != None):
         car.bounce()
-    # elif(car.collide(HORIZONTALLINEMASK, 88, 150)!=None):
-    #     # car.bounce()
+    # elif(car.car_collide(HORIZONTALLINEMASK, 88, 150)!=None):
+    #     car.bounce()
     # elif(car.collide((VERTICALLINEMASK), 120,120)!=None):
     #     # car.bounce()
     
