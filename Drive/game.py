@@ -3,9 +3,6 @@ import time
 import math
 from utils import scale_image, blit_rotate_center
 
-
-
-#setting up images for use in game.
 DESERT = scale_image(pygame.image.load("imgs/desert.png"), 2)
 # Edit this scale factor to fit own screen
 TRACK_SCALE_FACTOR = 0.7
@@ -21,7 +18,6 @@ VERTICALLINE = scale_image(pygame.image.load("imgs/verticalline.png"), .2)
 VERTICALLINEMASK = pygame.mask.from_surface(VERTICALLINE)
 VERTICALLINE.fill(color="blue")
 
-
 FINISH = pygame.image.load("imgs/finish.png")
 FINISHMASK = pygame.mask.from_surface(FINISH)
 
@@ -31,12 +27,6 @@ YELLOW_CAR = scale_image(pygame.image.load("imgs/yellow-car.png"), CAR_SCALE_FAC
 
 # NOTE: May have to change DPI to get screen to fit
 WIDTH, HEIGHT = TRACK.get_width(), TRACK.get_height()
-WIN = pygame.display.set_mode((WIDTH, HEIGHT))
-
-# Change Background Color to White (Obselete Now, just for info purposes)
-WIN.fill((255, 255, 255))
-
-pygame.display.set_caption("AI Driver!")
 
 FPS = 60
 
@@ -54,6 +44,11 @@ class Car:
         self.acceleration = 0.1
         self.rewardgate = 0
     
+    def reset(self):
+        self.vel = 0
+        self.angle = 0
+        self.x, self.y = self.START_POS
+    
     def rotate(self, left=False, right=False):
         if left:
             self.angle += self.rotational_vel
@@ -62,7 +57,6 @@ class Car:
     
     def draw(self, win):
         blit_rotate_center(win, self.img, (self.x, self.y), self.angle)
-
     
     # This function uses trig!
     def move(self):
@@ -77,7 +71,6 @@ class Car:
     
     def move_forward(self):
         self.vel = min(self.vel + self.acceleration, self.max_vel)
-
         # self.acceleration = max(self.acceleration + 0.001, 0.15)
     
     def move_backward(self):
@@ -136,132 +129,123 @@ class Car:
             frontrewardpoi = mask.overlap(car_mask,offset)
         return frontrewardpoi
 
-
     def bounce(self):
         self.vel = -self.vel
     
- 
+
+
+
+class DriveGameAI:
+
+    def __init__(self):
+        self.car = Car(3, 4)
+        self.clock = pygame.time.Clock()
+        self.images = [(DESERT, (0, 0)), (TRACK, (0, 0)), (FINISH, (88, 250)), (TRACK_BORDER, (0, 0))]
+        self.display = pygame.display.set_mode((WIDTH, HEIGHT))
+        self.horzGateInd = 0
+        self.vertGateInd = 32
+        self.arrayofrewardgatecoordinates = [(88,117), (89,95), (5,137),(8, 205),(8, 263),(9, 318),(15, 376), (47, 425),(78, 455), (124, 501), (163, 542), (276, 513), (278, 482),(278, 461), (279, 423),(428, 451), (429, 500), (431, 540),(538, 514),(537, 483),(537, 446),(538, 410),(536, 368),(537, 331),(274, 248),(535, 151),(538, 133),(534, 99),(177, 112),(177, 148),(175, 191), (176, 247),(87,24),(275, 531),(386, 336),(517, 531),(474, 246),(406, 247),(401, 164),(502, 165),(496, 18),(406, 19),(298, 18),(173, 282)]
+        pygame.display.set_caption("AI Driver!")
+        self.reset()
     
-
-def draw(win, images, car):
-    for img, pos in images:
-        win.blit(img, pos)
-  
+    def reset(self):
+        self.car.reset()
+        self.frame = 0
     
-    car.draw(win)
-
-# Note: Horizontals are in order!
-arrayofrewardgatecoordinates = [(88,117), (89,95), (5,137),(8, 205),(8, 263),(9, 318),(15, 376), (47, 425),(78, 455), (124, 501), (163, 542), (276, 513), (278, 482),(278, 461), (279, 423),(428, 451), (429, 500), (431, 540),(538, 514),(537, 483),(537, 446),(538, 410),(536, 368),(537, 331),(274, 248),(535, 151),(538, 133),(534, 99),(177, 112),(177, 148),(175, 191), (176, 247),(87,24),(275, 531),(386, 336),(517, 531),(474, 246),(406, 247),(401, 164),(502, 165),(496, 18),(406, 19),(298, 18),(173, 282)]
-
-#draws reward gates to screen. First 30 coordinates are for horizontal lines. rest are for vertical.
-def drawRewardGates(win):
-    i=0
-    # rewardgatearray = [(HORIZONTALLINE,(88,150))]
-    rewardgatearray = []
-    #print(arrayofrewardgatecoordinates[0][0])
-    # rewardgatemaskarray = [(HORIZONTALLINEMASK,(5,137))]
-    rewardgatemaskarray = []
-    for x,y in arrayofrewardgatecoordinates:
-        if i <= 31:
-            rewardgatearray.append((HORIZONTALLINE,(x,y)))
-            rewardgatemaskarray.append((HORIZONTALLINEMASK,(x,y)))
-        elif i > 31:
-            rewardgatearray.append((VERTICALLINE,(x,y)))
-            rewardgatemaskarray.append((VERTICALLINEMASK,(x,y)))
-        win.blit(rewardgatearray[i][0],(rewardgatearray[i][1]))
-        i+=1
-    return rewardgatemaskarray, arrayofrewardgatecoordinates
+    #draws reward gates to screen. First 30 coordinates are for horizontal lines. rest are for vertical.
+    def drawRewardGates(self, win):
+        i=0
+        # rewardgatearray = [(HORIZONTALLINE,(88,150))]
+        rewardgatearray = []
+        #print(arrayofrewardgatecoordinates[0][0])
+        # rewardgatemaskarray = [(HORIZONTALLINEMASK,(5,137))]
+        rewardgatemaskarray = []
+        for x,y in self.arrayofrewardgatecoordinates:
+            if i <= 31:
+                rewardgatearray.append((HORIZONTALLINE,(x,y)))
+                rewardgatemaskarray.append((HORIZONTALLINEMASK,(x,y)))
+            elif i > 31:
+                rewardgatearray.append((VERTICALLINE,(x,y)))
+                rewardgatemaskarray.append((VERTICALLINEMASK,(x,y)))
+            win.blit(rewardgatearray[i][0],(rewardgatearray[i][1]))
+            i+=1
+        return rewardgatemaskarray, self.arrayofrewardgatecoordinates
     
-
-
-# Event Loop
-run = True
-clock = pygame.time.Clock()
-images = [(DESERT, (0, 0)), (TRACK, (0, 0)), (FINISH, (88, 250)), (TRACK_BORDER, (0, 0))]
-car = Car(3, 4)
-
-def move_player(car):
-    keys = pygame.key.get_pressed()
-    moved = False
-
-    if keys[pygame.K_a] or keys[pygame.K_LEFT]:
-        car.rotate(left=True)
-    if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
-        car.rotate(right=True)
-    if keys[pygame.K_w] or keys[pygame.K_UP]:
-        moved=True
-        car.move_forward()
-    # Change to if for cool speed glitch (hold both up and down arrow)
-    elif keys[pygame.K_s] or keys[pygame.K_DOWN]:
-        moved=True
-        car.move_backward()
+    def draw(self, win, images, car):
+        for img, pos in images:
+            win.blit(img, pos)
     
-    if not moved:
-        car.reduce_speed()
+        car.draw(win)
+    
+    def move_player(self, car, action):
+        direction = action[0]
+        movement = action[1]
 
-horzGateInd = 0
-vertGateInd = 32
+        moved = False
 
-while run:
-    # Clock prevents faster than 60 FPS
-    clock.tick(FPS)
-
-    # Updates new drawings/changes
-    pygame.display.flip()
-
-
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            run = False
-            break
-        #elif is used to get points for reward gates.
-        elif(event.type == pygame.MOUSEBUTTONDOWN):
-            pos = pygame.mouse.get_pos()
-            # print(pos)
+        if direction == 0:
+            car.rotate(left=True)
+        if direction == 2:
+            car.rotate(right=True)
+        if movement == 0:
+            moved=True
+            car.move_forward()
+        # Change to if for cool speed glitch (hold both up and down arrow)
+        elif movement == 2:
+            moved=True
+            car.move_backward()
         
-  
-    move_player(car)
+        if not moved:
+            car.reduce_speed()
+    
+    def play_move(self, action):
+        # Clock prevents faster than 60 FPS
+        self.clock.tick(FPS)
+        self.frame += 1
 
-    draw(WIN, images, car)
-    rewardgatemaskarray = drawRewardGates(WIN)[0]
-    rewardgatemaskcoordinatearray = drawRewardGates(WIN)[1]
-    
-    walldistancearray = [0,0,0,0]
-    walldistancearray[0]= math.dist(car.getWallPointOfIntersection(TRACK_BORDER_MASK)[0],(car.x,car.y))
-    walldistancearray[1]= math.dist(car.getWallPointOfIntersection(TRACK_BORDER_MASK)[1],(car.x,car.y))
-    walldistancearray[2] = math.dist(car.getWallPointOfIntersection(TRACK_BORDER_MASK)[2],(car.x,car.y))
-    walldistancearray[3]= math.dist(car.getWallPointOfIntersection(TRACK_BORDER_MASK)[3],(car.x,car.y))
-    # print(walldistancearray)
+        reward = 0
 
-    #rewardgatedistance still needs some work.
-    #rewardgatedistance = math.dist((car.getRewardGatePointOfIntersection(rewardgatemaskarray[0][0],rewardgatemaskcoordinatearray[0][0],rewardgatemaskcoordinatearray[0][1])),(car.x,car.y))
-    
-    if(car.car_collide(TRACK_BORDER_MASK) != None):
-        car.bounce()
-    
-    if(car.car_collide(rewardgatemaskarray[horzGateInd][0], rewardgatemaskarray[horzGateInd][1][0], rewardgatemaskarray[horzGateInd][1][1])):
-        print(horzGateInd)
-        if(horzGateInd == 31):
-            horzGateInd = 0
-        else:
-            horzGateInd += 1
-    
-    if(car.car_collide(rewardgatemaskarray[vertGateInd][0], rewardgatemaskarray[vertGateInd][1][0], rewardgatemaskarray[vertGateInd][1][1])):
-        print(vertGateInd)
-        if(vertGateInd == len(rewardgatemaskarray) - 1):
-            vertGateInd = 32
-        else:
-            vertGateInd += 1
-    
+        # Must reset if AI gets stuck
+        if self.frame > 10000:
+            self.reset()
 
-    # elif(car.car_collide(HORIZONTALLINEMASK, 88, 150)!=None):
-    #     car.bounce()
-    # elif(car.collide((VERTICALLINEMASK), 120,120)!=None):
-    #     # car.bounce()
-    
-    car.move()
+        # Updates new drawings/changes
+        pygame.display.flip()
 
-    
-    
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+        
+        self.move_player(self.car, action)
 
-pygame.quit()
+        self.draw(self.display, self.images, self.car)
+        rewardgatemaskarray = self.drawRewardGates(self.display)[0]
+        rewardgatemaskcoordinatearray = self.drawRewardGates(self.display)[1]
+        
+        walldistancearray = [0,0,0,0]
+        walldistancearray[0]= math.dist(self.car.getWallPointOfIntersection(TRACK_BORDER_MASK)[0],(self.car.x, self.car.y))
+        walldistancearray[1]= math.dist(self.car.getWallPointOfIntersection(TRACK_BORDER_MASK)[1],(self.car.x, self.car.y))
+        walldistancearray[2]= math.dist(self.car.getWallPointOfIntersection(TRACK_BORDER_MASK)[2],(self.car.x, self.car.y))
+        walldistancearray[3]= math.dist(self.car.getWallPointOfIntersection(TRACK_BORDER_MASK)[3],(self.car.x, self.car.y))
+
+        if(self.car.car_collide(TRACK_BORDER_MASK) != None):
+            reward = -10
+            self.car.bounce()
+        
+        if(self.car.car_collide(rewardgatemaskarray[self.horzGateInd][0], rewardgatemaskarray[self.horzGateInd][1][0], rewardgatemaskarray[self.horzGateInd][1][1])):
+            print(self.horzGateInd)
+            if(self.horzGateInd == 31):
+                self.horzGateInd = 0
+            else:
+                self.horzGateInd += 1
+    
+        if(self.car.car_collide(rewardgatemaskarray[self.vertGateInd][0], rewardgatemaskarray[self.vertGateInd][1][0], rewardgatemaskarray[self.vertGateInd][1][1])):
+            print(self.vertGateInd)
+            if(self.vertGateInd == len(rewardgatemaskarray) - 1):
+                self.vertGateInd = 32
+            else:
+                self.vertGateInd += 1
+        
+        self.car.move()
+
