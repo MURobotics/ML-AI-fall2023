@@ -150,16 +150,19 @@ def draw(win, images, car):
     
     car.draw(win)
 
+# Note: Horizontals are in order!
+arrayofrewardgatecoordinates = [(88,117), (89,95), (5,137),(8, 205),(8, 263),(9, 318),(15, 376), (47, 425),(78, 455), (124, 501), (163, 542), (276, 513), (278, 482),(278, 461), (279, 423),(428, 451), (429, 500), (431, 540),(538, 514),(537, 483),(537, 446),(538, 410),(536, 368),(537, 331),(274, 248),(535, 151),(538, 133),(534, 99),(177, 112),(177, 148),(175, 191), (176, 247),(87,24),(275, 531),(386, 336),(517, 531),(474, 246),(406, 247),(401, 164),(502, 165),(496, 18),(406, 19),(298, 18),(173, 282)]
 
 #draws reward gates to screen. First 30 coordinates are for horizontal lines. rest are for vertical.
 def drawRewardGates(win):
     i=0
-    rewardgatearray = [(HORIZONTALLINE,(88,150))]
-    arrayofrewardgatecoordinates = [(5,137),(88,117),(8, 205),(8, 263),(9, 318),(15, 376), (47, 425),(78, 455), (124, 501), (163, 542), (276, 513), (278, 482),(278, 461), (279, 423),(428, 451), (429, 500), (431, 540),(538, 514),(537, 483),(537, 446),(538, 410),(536, 368),(537, 331),(274, 248),(535, 151),(538, 133),(534, 99),(177, 112),(177, 148), (175, 191),(176, 247), (89, 95),(275, 531),(386, 336),(517, 531),(474, 246),(406, 247),(401, 164),(502, 165),(496, 18),(406, 19),(298, 18),(173, 282),(87,24)]
+    # rewardgatearray = [(HORIZONTALLINE,(88,150))]
+    rewardgatearray = []
     #print(arrayofrewardgatecoordinates[0][0])
-    rewardgatemaskarray = [(HORIZONTALLINEMASK,(5,137))]
+    # rewardgatemaskarray = [(HORIZONTALLINEMASK,(5,137))]
+    rewardgatemaskarray = []
     for x,y in arrayofrewardgatecoordinates:
-        if i<31:
+        if i <= 31:
             rewardgatearray.append((HORIZONTALLINE,(x,y)))
             rewardgatemaskarray.append((HORIZONTALLINEMASK,(x,y)))
         elif i > 31:
@@ -196,6 +199,9 @@ def move_player(car):
     if not moved:
         car.reduce_speed()
 
+horzGateInd = 0
+vertGateInd = 32
+
 while run:
     # Clock prevents faster than 60 FPS
     clock.tick(FPS)
@@ -211,7 +217,7 @@ while run:
         #elif is used to get points for reward gates.
         elif(event.type == pygame.MOUSEBUTTONDOWN):
             pos = pygame.mouse.get_pos()
-            print(pos)
+            # print(pos)
         
   
     move_player(car)
@@ -225,13 +231,30 @@ while run:
     walldistancearray[1]= math.dist(car.getWallPointOfIntersection(TRACK_BORDER_MASK)[1],(car.x,car.y))
     walldistancearray[2] = math.dist(car.getWallPointOfIntersection(TRACK_BORDER_MASK)[2],(car.x,car.y))
     walldistancearray[3]= math.dist(car.getWallPointOfIntersection(TRACK_BORDER_MASK)[3],(car.x,car.y))
-    print(walldistancearray)
+    # print(walldistancearray)
 
     #rewardgatedistance still needs some work.
     #rewardgatedistance = math.dist((car.getRewardGatePointOfIntersection(rewardgatemaskarray[0][0],rewardgatemaskcoordinatearray[0][0],rewardgatemaskcoordinatearray[0][1])),(car.x,car.y))
     
     if(car.car_collide(TRACK_BORDER_MASK) != None):
         car.bounce()
+    
+    
+    if(car.car_collide(rewardgatemaskarray[horzGateInd][0], rewardgatemaskarray[horzGateInd][1][0], rewardgatemaskarray[horzGateInd][1][1])):
+        print(horzGateInd)
+        if(horzGateInd == 31):
+            horzGateInd = 0
+        else:
+            horzGateInd += 1
+    
+    if(car.car_collide(rewardgatemaskarray[vertGateInd][0], rewardgatemaskarray[vertGateInd][1][0], rewardgatemaskarray[vertGateInd][1][1])):
+        print(vertGateInd)
+        if(vertGateInd == len(rewardgatemaskarray) - 1):
+            vertGateInd = 32
+        else:
+            vertGateInd += 1
+    
+
     # elif(car.car_collide(HORIZONTALLINEMASK, 88, 150)!=None):
     #     car.bounce()
     # elif(car.collide((VERTICALLINEMASK), 120,120)!=None):
