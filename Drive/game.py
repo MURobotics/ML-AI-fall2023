@@ -239,7 +239,6 @@ while run:
     if(car.car_collide(TRACK_BORDER_MASK) != None):
         car.bounce()
     
-    
     if(car.car_collide(rewardgatemaskarray[horzGateInd][0], rewardgatemaskarray[horzGateInd][1][0], rewardgatemaskarray[horzGateInd][1][1])):
         print(horzGateInd)
         if(horzGateInd == 31):
