@@ -144,13 +144,23 @@ class DriveGameAI:
         self.display = pygame.display.set_mode((WIDTH, HEIGHT))
         self.horzGateInd = 0
         self.vertGateInd = 32
-        self.arrayofrewardgatecoordinates = [(88,117), (89,95), (5,137),(8, 205),(8, 263),(9, 318),(15, 376), (47, 425),(78, 455), (124, 501), (163, 542), (276, 513), (278, 482),(278, 461), (279, 423),(428, 451), (429, 500), (431, 540),(538, 514),(537, 483),(537, 446),(538, 410),(536, 368),(537, 331),(274, 248),(535, 151),(538, 133),(534, 99),(177, 112),(177, 148),(175, 191), (176, 247),(87,24),(275, 531),(386, 336),(517, 531),(474, 246),(406, 247),(401, 164),(502, 165),(496, 18),(406, 19),(298, 18),(173, 282)]
+        self.walldistancearray = [0,0,0,0]
+        self.arrayofrewardgatecoordinates = [(88,170), (89,95), (5,137),(8, 205),(8, 263),(9, 318),(15, 376), (47, 425),(78, 455), (124, 501), (163, 542), (276, 513), (278, 482),(278, 461), (279, 423),(428, 451), (429, 500), (431, 540),(538, 514),(537, 483),(537, 446),(538, 410),(536, 368),(537, 331),(274, 248),(535, 151),(538, 133),(534, 99),(177, 112),(177, 148),(175, 191), (176, 247),(87,24),(275, 531),(386, 336),(517, 531),(474, 246),(406, 247),(401, 164),(502, 165),(496, 18),(406, 19),(298, 18),(173, 282)]
         pygame.display.set_caption("AI Driver!")
         self.reset()
     
     def reset(self):
         self.car.reset()
         self.frame = 0
+        self.horzGateInd = 0
+        self.vertGateInd = 32
+    
+    def setWallDistances(self):
+        self.walldistancearray[0]= math.dist(self.car.getWallPointOfIntersection(TRACK_BORDER_MASK)[0],(self.car.x, self.car.y))
+        self.walldistancearray[1]= math.dist(self.car.getWallPointOfIntersection(TRACK_BORDER_MASK)[1],(self.car.x, self.car.y))
+        self.walldistancearray[2]= math.dist(self.car.getWallPointOfIntersection(TRACK_BORDER_MASK)[2],(self.car.x, self.car.y))
+        self.walldistancearray[3]= math.dist(self.car.getWallPointOfIntersection(TRACK_BORDER_MASK)[3],(self.car.x, self.car.y))
+
     
     #draws reward gates to screen. First 30 coordinates are for horizontal lines. rest are for vertical.
     def drawRewardGates(self, win):
@@ -178,35 +188,68 @@ class DriveGameAI:
         car.draw(win)
     
     def move_player(self, car, action):
-        direction = action[0]
-        movement = action[1]
-
+        carMove = 0
+        # print(action)
+        for index in range(0, len(action)):
+            if(action[index] == 1):
+                carMove = index
         moved = False
 
-        if direction == 0:
+        if carMove % 3 == 0:
+            # print("LEFT")
             car.rotate(left=True)
-        if direction == 2:
+        if carMove % 3 == 2:
+            # print("RIGHT")
             car.rotate(right=True)
-        if movement == 0:
+        if carMove <= 2:
             moved=True
             car.move_forward()
         # Change to if for cool speed glitch (hold both up and down arrow)
-        elif movement == 2:
+        elif carMove >= 6:
             moved=True
             car.move_backward()
         
         if not moved:
             car.reduce_speed()
     
+    def checkRewardGateCollisions(self, rewardgatemaskarray):
+        reward = 0
+        if(self.car.car_collide(rewardgatemaskarray[self.horzGateInd][0], rewardgatemaskarray[self.horzGateInd][1][0], rewardgatemaskarray[self.horzGateInd][1][1])):
+            if(self.horzGateInd == 31):
+                self.horzGateInd = 0
+            else:
+                self.horzGateInd += 1
+            reward += 100
+    
+        if(self.car.car_collide(rewardgatemaskarray[self.vertGateInd][0], rewardgatemaskarray[self.vertGateInd][1][0], rewardgatemaskarray[self.vertGateInd][1][1])):
+            if(self.vertGateInd == len(rewardgatemaskarray) - 1):
+                self.vertGateInd = 32
+            else:
+                self.vertGateInd += 1
+            reward += 100
+        
+        return reward
+    
+    def checkCarCollision(self):
+        reward = 0
+        if(self.car.car_collide(TRACK_BORDER_MASK) != None):
+            self.car.bounce()
+            reward = -10
+        return reward
+    
     def play_move(self, action):
         # Clock prevents faster than 60 FPS
-        self.clock.tick(FPS)
+        # self.clock.tick(FPS)
         self.frame += 1
 
+        # Two things we return
+        game_over = False
         reward = 0
 
         # Must reset if AI gets stuck
-        if self.frame > 10000:
+        if self.frame > 1000:
+            game_over = True
+            reward += -100
             self.reset()
 
         # Updates new drawings/changes
@@ -220,32 +263,19 @@ class DriveGameAI:
         self.move_player(self.car, action)
 
         self.draw(self.display, self.images, self.car)
-        rewardgatemaskarray = self.drawRewardGates(self.display)[0]
-        rewardgatemaskcoordinatearray = self.drawRewardGates(self.display)[1]
-        
-        walldistancearray = [0,0,0,0]
-        walldistancearray[0]= math.dist(self.car.getWallPointOfIntersection(TRACK_BORDER_MASK)[0],(self.car.x, self.car.y))
-        walldistancearray[1]= math.dist(self.car.getWallPointOfIntersection(TRACK_BORDER_MASK)[1],(self.car.x, self.car.y))
-        walldistancearray[2]= math.dist(self.car.getWallPointOfIntersection(TRACK_BORDER_MASK)[2],(self.car.x, self.car.y))
-        walldistancearray[3]= math.dist(self.car.getWallPointOfIntersection(TRACK_BORDER_MASK)[3],(self.car.x, self.car.y))
 
-        if(self.car.car_collide(TRACK_BORDER_MASK) != None):
-            reward = -10
-            self.car.bounce()
+        rewardgatemaskarray, rewardgatemaskcoordinatearray = self.drawRewardGates(self.display)
+
+        self.setWallDistances()
+
+        reward += self.checkCarCollision()
         
-        if(self.car.car_collide(rewardgatemaskarray[self.horzGateInd][0], rewardgatemaskarray[self.horzGateInd][1][0], rewardgatemaskarray[self.horzGateInd][1][1])):
-            print(self.horzGateInd)
-            if(self.horzGateInd == 31):
-                self.horzGateInd = 0
-            else:
-                self.horzGateInd += 1
-    
-        if(self.car.car_collide(rewardgatemaskarray[self.vertGateInd][0], rewardgatemaskarray[self.vertGateInd][1][0], rewardgatemaskarray[self.vertGateInd][1][1])):
-            print(self.vertGateInd)
-            if(self.vertGateInd == len(rewardgatemaskarray) - 1):
-                self.vertGateInd = 32
-            else:
-                self.vertGateInd += 1
+        reward += self.checkRewardGateCollisions(rewardgatemaskarray)
         
         self.car.move()
+
+        # if(reward != 0):
+        #     print(reward)
+
+        return reward, game_over
 
