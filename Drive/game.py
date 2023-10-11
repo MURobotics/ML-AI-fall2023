@@ -24,7 +24,9 @@ rewardGates = [(VERTICALLINEMASK, 175, 275), (HORIZONTALLINEMASK , 180, 180),
                (HORIZONTALLINEMASK , 260, 240), (VERTICALLINEMASK , 430, 240),
                (HORIZONTALLINEMASK , 530, 425), (HORIZONTALLINEMASK , 425, 510),
                (VERTICALLINEMASK , 390, 325), (HORIZONTALLINEMASK , 275, 510),
-               (HORIZONTALLINEMASK, 135,510),(HORIZONTALLINEMASK, 15,360) ]
+               (HORIZONTALLINEMASK, 135,510),(HORIZONTALLINEMASK, 12,360),
+                (HORIZONTALLINEMASK, 5,200), (VERTICALLINEMASK , 90, 25),
+                (HORIZONTALLINEMASK, 90,250)]
 
 FINISH = pygame.image.load("imgs/finish.png")
 
@@ -103,10 +105,25 @@ class Car:
         self.vel = -self.vel
 
     def get_x_y_orient(self):
-        return self.x, self.y, self.angle
+        return [self.x, self.y, self.angle]
         
     def update_score(self, added_score):
         self.score += added_score
+
+    def reset(self):
+        self.vel = 0;
+        self.angle = 0;
+        self.x, self.y = self.START_POS;
+        self.acceleration = 0.1;
+        self.score = 0;
+
+        return [self.x, self.y, self.angle];
+
+    def step(self, action, time_duration):
+        #TODO figure out score
+
+        return self.get_x_y_orient(), self.score, terminated, truncated
+        
     
 
 def draw(win, images, car):
