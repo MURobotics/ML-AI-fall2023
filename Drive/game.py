@@ -274,8 +274,8 @@ class DriveGameAI:
         
         self.car.move()
 
-        # if(reward != 0):
-        #     print(reward)
+        if(reward != 0):
+            print(reward)
 
         return reward, game_over
 
