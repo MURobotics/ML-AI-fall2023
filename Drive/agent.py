@@ -20,7 +20,7 @@ class Agent:
         self.epsilon = 0 # Randomness
         self.gamma = 0.9 # Discount Rate
         self.memory = deque(maxlen=MAX_MEMORY) # popleft() when maxlen is reached
-        self.model = Linear_QNet(8, 2567, 9)
+        self.model = Linear_QNet(11, 2567, 9)#Changed number of inputs to 11 to accomodate for new rays and correct direction input.
         self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
         # TODO: MODEL AND TRAINER
     
@@ -35,7 +35,10 @@ class Agent:
             int(game.walldistancearray[0] / 10),
             int(game.walldistancearray[1] / 10),
             int(game.walldistancearray[2] / 10),
-            int(game.walldistancearray[3] / 10)
+            int(game.walldistancearray[3] / 10),
+            int(game.walldistancearray[4] / 10),
+            int(game.walldistancearray[5] / 10),
+            int(game.car.correctDirection())# 1 == Correct direction and 0 == Wrong direction you can change this value it doesn't matter.
         ]
         # Velocity
         # Angle
@@ -43,10 +46,12 @@ class Agent:
         # Y
         # Left Distance
         # Right Distance
-        # Up Distance
+        # Forward Left Distance - This is new
+        # Forward Distance
+        # Forward Right Distance - and this new
         # Down Distance
         # Distance to Reward Gate
-
+        # Right direction? - Can maybe remove this and make a negative reward out of this.
         # NOTE: np.array is faster due to homogeneous nature
         return np.array(state, dtype=int)
 
