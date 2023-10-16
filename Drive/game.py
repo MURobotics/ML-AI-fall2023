@@ -3,27 +3,33 @@ import time
 import math
 from utils import scale_image, blit_rotate_center
 
-DESERT = scale_image(pygame.image.load("imgs/desert.png"), 2)
+DESERT = scale_image(pygame.image.load("Drive/imgs/desert.png"), 2)
 # Edit this scale factor to fit own screen
 TRACK_SCALE_FACTOR = 0.7
-TRACK = scale_image(pygame.image.load("imgs/track.png"), TRACK_SCALE_FACTOR)
-TRACK_BORDER = scale_image(pygame.image.load("imgs/track-border.png"), TRACK_SCALE_FACTOR)
+TRACK = scale_image(pygame.image.load("Drive/imgs/track.png"), TRACK_SCALE_FACTOR)
+TRACK_BORDER = scale_image(pygame.image.load("Drive/imgs/track-border.png"), TRACK_SCALE_FACTOR)
 TRACK_BORDER_MASK = pygame.mask.from_surface(TRACK_BORDER)
 
-HORIZONTALLINE =  scale_image(pygame.image.load("imgs/horizontalline.png"),.1)
+INNER_TRACK_BORDER = scale_image(pygame.image.load("Drive/imgs/inner-track-border.png"), TRACK_SCALE_FACTOR)
+INNER_TRACK_BORDER_MASK = pygame.mask.from_surface(INNER_TRACK_BORDER)
+
+OUTER_TRACK_BORDER = scale_image(pygame.image.load("Drive/imgs/outer-track-border.png"), TRACK_SCALE_FACTOR)
+OUTER_TRACK_BORDER_MASK = pygame.mask.from_surface(OUTER_TRACK_BORDER)
+
+HORIZONTALLINE =  scale_image(pygame.image.load("Drive/imgs/horizontalline.png"),.1)
 HORIZONTALLINEMASK = pygame.mask.from_surface(HORIZONTALLINE)
 HORIZONTALLINE.fill(color="blue")
 
-VERTICALLINE = scale_image(pygame.image.load("imgs/verticalline.png"), .2)
+VERTICALLINE = scale_image(pygame.image.load("Drive/imgs/verticalline.png"), .2)
 VERTICALLINEMASK = pygame.mask.from_surface(VERTICALLINE)
 VERTICALLINE.fill(color="blue")
 
-FINISH = pygame.image.load("imgs/finish.png")
+FINISH = pygame.image.load("Drive/imgs/finish.png")
 FINISHMASK = pygame.mask.from_surface(FINISH)
 
 CAR_SCALE_FACTOR = 0.6
-RED_CAR = scale_image(pygame.image.load("imgs/red-car.png"), CAR_SCALE_FACTOR)
-YELLOW_CAR = scale_image(pygame.image.load("imgs/yellow-car.png"), CAR_SCALE_FACTOR)
+RED_CAR = scale_image(pygame.image.load("Drive/imgs/red-car.png"), CAR_SCALE_FACTOR)
+YELLOW_CAR = scale_image(pygame.image.load("Drive/imgs/yellow-car.png"), CAR_SCALE_FACTOR)
 
 # NOTE: May have to change DPI to get screen to fit
 WIDTH, HEIGHT = TRACK.get_width(), TRACK.get_height()
@@ -57,6 +63,7 @@ class Car:
     
     def draw(self, win):
         blit_rotate_center(win, self.img, (self.x, self.y), self.angle)
+        self.draw_rays(win,self,TRACK_BORDER_MASK,100)#Comment this out if you don't wanna see the rays
     
     # This function uses trig!
     def move(self):
@@ -132,6 +139,66 @@ class Car:
     def bounce(self):
         self.vel = -self.vel
     
+    def correctDirection(self):
+        ray_length = 50
+        
+        correct_right_ray = self.cast_ray(0,OUTER_TRACK_BORDER_MASK,ray_length)
+        correct_left_ray = self.cast_ray(math.pi,INNER_TRACK_BORDER_MASK,ray_length)
+        wrong_right_ray = self.cast_ray(0,INNER_TRACK_BORDER_MASK,ray_length)
+        wrong_left_ray = self.cast_ray(math.pi,OUTER_TRACK_BORDER_MASK,ray_length)
+        
+        if not correct_right_ray and wrong_right_ray:
+            return 0
+        
+        if not correct_left_ray and wrong_left_ray:
+            return 0
+        
+        return 1
+    
+    def distance_to_point(self, point):
+        return math.sqrt((self.x - point[0]) ** 2 + (self.y - point[1]) ** 2)
+
+    def cast_ray(self, direction, mask, max_length):#Can use this for casting rays which we will use to detect walls and/or reward gates.
+        initDirection = 90
+        radians = math.radians(self.angle + initDirection)
+        dx = math.sin(radians + direction)
+        dy = math.cos(radians + direction)
+        
+        x, y = self.x,self.y
+        for _ in range(max_length):
+            x += dx
+            y += dy
+            
+            offset = (int(x),int(y))
+            poi = mask.overlap(pygame.mask.from_surface(self.img),offset)
+            
+            if poi:
+                distance = self.distance_to_point(offset)
+                return offset, poi, distance
+            
+        return None
+    
+    def cast_rays(self, mask, max_length):
+        right_ray = self.cast_ray(0, mask, max_length)
+        left_ray = self.cast_ray(math.pi, mask, max_length)
+        frontLeft_ray = self.cast_ray((math.pi*3)/4, mask, max_length)
+        front_ray = self.cast_ray(math.pi / 2, mask, max_length)
+        frontRight_ray = self.cast_ray(math.pi / 4, mask, max_length)
+        rear_ray = self.cast_ray(-math.pi / 2, mask, max_length)
+
+        return right_ray, left_ray, frontLeft_ray, front_ray, frontRight_ray, rear_ray
+    
+    def draw_rays(self,win, car, mask, max_length):
+        rays = self.cast_rays(mask, max_length)
+        i = 0
+        for ray in rays:
+            color = (255,0,0)
+            if ray:
+                # Draw the ray from the car's position to the point of intersection
+                if i == 3:
+                    color = (0,255,0)
+                pygame.draw.line(win, color, (car.x, car.y), ray[0], 2)
+            i += 1
 
 
 
@@ -144,7 +211,7 @@ class DriveGameAI:
         self.display = pygame.display.set_mode((WIDTH, HEIGHT))
         self.horzGateInd = 0
         self.vertGateInd = 32
-        self.walldistancearray = [0,0,0,0]
+        self.walldistancearray = [0,0,0,0,0,0]
         self.arrayofrewardgatecoordinates = [(88,170), (89,95), (5,137),(8, 205),(8, 263),(9, 318),(15, 376), (47, 425),(78, 455), (124, 501), (163, 542), (276, 513), (278, 482),(278, 461), (279, 423),(428, 451), (429, 500), (431, 540),(538, 514),(537, 483),(537, 446),(538, 410),(536, 368),(537, 331),(274, 248),(535, 151),(538, 133),(534, 99),(177, 112),(177, 148),(175, 191), (176, 247),(87,24),(275, 531),(386, 336),(517, 531),(474, 246),(406, 247),(401, 164),(502, 165),(496, 18),(406, 19),(298, 18),(173, 282)]
         pygame.display.set_caption("AI Driver!")
         self.reset()
@@ -156,10 +223,14 @@ class DriveGameAI:
         self.vertGateInd = 32
     
     def setWallDistances(self):
-        self.walldistancearray[0]= math.dist(self.car.getWallPointOfIntersection(TRACK_BORDER_MASK)[0],(self.car.x, self.car.y))
-        self.walldistancearray[1]= math.dist(self.car.getWallPointOfIntersection(TRACK_BORDER_MASK)[1],(self.car.x, self.car.y))
-        self.walldistancearray[2]= math.dist(self.car.getWallPointOfIntersection(TRACK_BORDER_MASK)[2],(self.car.x, self.car.y))
-        self.walldistancearray[3]= math.dist(self.car.getWallPointOfIntersection(TRACK_BORDER_MASK)[3],(self.car.x, self.car.y))
+        rays = self.car.cast_rays(TRACK_BORDER_MASK,100)
+        i = 0
+        for ray in rays:
+            if ray:
+                self.walldistancearray[i] = int(ray[2])
+            else:
+                self.walldistancearray[i] = 100
+            i += 1
 
     
     #draws reward gates to screen. First 30 coordinates are for horizontal lines. rest are for vertical.
