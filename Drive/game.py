@@ -3,33 +3,33 @@ import time
 import math
 from utils import scale_image, blit_rotate_center
 
-DESERT = scale_image(pygame.image.load("Drive/imgs/desert.png"), 2)
+DESERT = scale_image(pygame.image.load("imgs/desert.png"), 2)
 # Edit this scale factor to fit own screen
 TRACK_SCALE_FACTOR = 0.7
-TRACK = scale_image(pygame.image.load("Drive/imgs/track.png"), TRACK_SCALE_FACTOR)
-TRACK_BORDER = scale_image(pygame.image.load("Drive/imgs/track-border.png"), TRACK_SCALE_FACTOR)
+TRACK = scale_image(pygame.image.load("imgs/track.png"), TRACK_SCALE_FACTOR)
+TRACK_BORDER = scale_image(pygame.image.load("imgs/track-border.png"), TRACK_SCALE_FACTOR)
 TRACK_BORDER_MASK = pygame.mask.from_surface(TRACK_BORDER)
 
-INNER_TRACK_BORDER = scale_image(pygame.image.load("Drive/imgs/inner-track-border.png"), TRACK_SCALE_FACTOR)
+INNER_TRACK_BORDER = scale_image(pygame.image.load("imgs/inner-track-border.png"), TRACK_SCALE_FACTOR)
 INNER_TRACK_BORDER_MASK = pygame.mask.from_surface(INNER_TRACK_BORDER)
 
-OUTER_TRACK_BORDER = scale_image(pygame.image.load("Drive/imgs/outer-track-border.png"), TRACK_SCALE_FACTOR)
+OUTER_TRACK_BORDER = scale_image(pygame.image.load("imgs/outer-track-border.png"), TRACK_SCALE_FACTOR)
 OUTER_TRACK_BORDER_MASK = pygame.mask.from_surface(OUTER_TRACK_BORDER)
 
-HORIZONTALLINE =  scale_image(pygame.image.load("Drive/imgs/horizontalline.png"),.1)
+HORIZONTALLINE =  scale_image(pygame.image.load("imgs/horizontalline.png"),.1)
 HORIZONTALLINEMASK = pygame.mask.from_surface(HORIZONTALLINE)
 HORIZONTALLINE.fill(color="blue")
 
-VERTICALLINE = scale_image(pygame.image.load("Drive/imgs/verticalline.png"), .2)
+VERTICALLINE = scale_image(pygame.image.load("imgs/verticalline.png"), .2)
 VERTICALLINEMASK = pygame.mask.from_surface(VERTICALLINE)
 VERTICALLINE.fill(color="blue")
 
-FINISH = pygame.image.load("Drive/imgs/finish.png")
+FINISH = pygame.image.load("imgs/finish.png")
 FINISHMASK = pygame.mask.from_surface(FINISH)
 
 CAR_SCALE_FACTOR = 0.6
-RED_CAR = scale_image(pygame.image.load("Drive/imgs/red-car.png"), CAR_SCALE_FACTOR)
-YELLOW_CAR = scale_image(pygame.image.load("Drive/imgs/yellow-car.png"), CAR_SCALE_FACTOR)
+RED_CAR = scale_image(pygame.image.load("imgs/red-car.png"), CAR_SCALE_FACTOR)
+YELLOW_CAR = scale_image(pygame.image.load("imgs/yellow-car.png"), CAR_SCALE_FACTOR)
 
 # NOTE: May have to change DPI to get screen to fit
 WIDTH, HEIGHT = TRACK.get_width(), TRACK.get_height()
@@ -197,7 +197,7 @@ class Car:
                 # Draw the ray from the car's position to the point of intersection
                 if i == 3:
                     color = (0,255,0)
-                pygame.draw.line(win, color, (car.x, car.y), ray[0], 2)
+                pygame.draw.line(win, color, (car.x + 10, car.y + 10), ray[0], 2)
             i += 1
 
 
@@ -334,6 +334,8 @@ class DriveGameAI:
         self.move_player(self.car, action)
 
         self.draw(self.display, self.images, self.car)
+
+        # pygame.draw.circle(color="red", center=(self.car.x, self.car.y), surface=TRACK, radius=1)
 
         rewardgatemaskarray, rewardgatemaskcoordinatearray = self.drawRewardGates(self.display)
 

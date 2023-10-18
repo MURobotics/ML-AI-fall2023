@@ -80,7 +80,7 @@ class Agent:
         self.epsilon = 80 - self.n_games*2
         action = [0, 0, 0, 0, 0, 0, 0, 0, 0]
         if random.randint(0, 100) < self.epsilon:
-            move = random.randint(0, 8)
+            move = random.randint(0, 5)
             action[move] = 1
         else:
             state0 = torch.tensor(state, dtype=torch.float)
