@@ -259,6 +259,7 @@ class DriveGameAI:
         car.draw(win)
     
     def move_player(self, car, action):
+        reward = -1
         carMove = 0
         # print(action)
         for index in range(0, len(action)):
@@ -275,6 +276,7 @@ class DriveGameAI:
         if carMove <= 2:
             moved=True
             car.move_forward()
+            reward += 1
         # Change to if for cool speed glitch (hold both up and down arrow)
         elif carMove >= 6:
             moved=True
@@ -282,6 +284,8 @@ class DriveGameAI:
         
         if not moved:
             car.reduce_speed()
+        
+        return reward
     
     def checkRewardGateCollisions(self, rewardgatemaskarray):
         reward = 0
@@ -290,14 +294,14 @@ class DriveGameAI:
                 self.horzGateInd = 0
             else:
                 self.horzGateInd += 1
-            reward += 100
+            reward += (self.horzGateInd + 1)*100
     
         if(self.car.car_collide(rewardgatemaskarray[self.vertGateInd][0], rewardgatemaskarray[self.vertGateInd][1][0], rewardgatemaskarray[self.vertGateInd][1][1])):
             if(self.vertGateInd == len(rewardgatemaskarray) - 1):
                 self.vertGateInd = 32
             else:
                 self.vertGateInd += 1
-            reward += 100
+            reward += (self.vertGateInd + 1)*100
         
         return reward
     
@@ -318,7 +322,7 @@ class DriveGameAI:
         reward = 0
 
         # Must reset if AI gets stuck
-        if self.frame > 1000:
+        if self.frame > 2000:
             game_over = True
             reward += -100
             self.reset()
@@ -331,7 +335,7 @@ class DriveGameAI:
                 pygame.quit()
                 quit()
         
-        self.move_player(self.car, action)
+        reward += self.move_player(self.car, action)
 
         self.draw(self.display, self.images, self.car)
 
@@ -341,14 +345,19 @@ class DriveGameAI:
 
         self.setWallDistances()
 
-        reward += self.checkCarCollision()
+        collisionReward = self.checkCarCollision()
+        reward += collisionReward
+        if(collisionReward == -10):
+            game_over = True
+            reward += -100
+            self.reset()
         
         reward += self.checkRewardGateCollisions(rewardgatemaskarray)
         
         self.car.move()
 
-        if(reward != 0):
-            print(reward)
+        # if(reward != 0):
+        #     print(reward)
 
         return reward, game_over
 

@@ -17,10 +17,10 @@ LR = 0.001
 class Agent:
     def __init__(self):
         self.n_games = 0 # Number of Games Played
-        self.epsilon = 0 # Randomness
+        self.epsilon = 0.9 # Randomness
         self.gamma = 0.9 # Discount Rate
         self.memory = deque(maxlen=MAX_MEMORY) # popleft() when maxlen is reached
-        self.model = Linear_QNet(11, 2567, 9)#Changed number of inputs to 11 to accomodate for new rays and correct direction input.
+        self.model = Linear_QNet(8, 9, 9) #Changed number of inputs to 11 to accomodate for new rays and correct direction input.
         self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
         # TODO: MODEL AND TRAINER
     
@@ -28,16 +28,16 @@ class Agent:
     def get_state(self, game):
 
         state = [
-            int(game.car.vel * 10),
-            int((game.car.angle % 360)/ 36),
-            int(game.car.x / 10),
-            int(game.car.y / 10),
-            int(game.walldistancearray[0] / 10),
-            int(game.walldistancearray[1] / 10),
-            int(game.walldistancearray[2] / 10),
-            int(game.walldistancearray[3] / 10),
-            int(game.walldistancearray[4] / 10),
-            int(game.walldistancearray[5] / 10),
+            int(game.car.vel),
+            # int((game.car.angle % 360)),
+            # int(game.car.x),
+            # int(game.car.y),
+            int(game.walldistancearray[0]),
+            int(game.walldistancearray[1]),
+            int(game.walldistancearray[2]),
+            int(game.walldistancearray[3]),
+            int(game.walldistancearray[4]),
+            int(game.walldistancearray[5]),
             int(game.car.correctDirection())# 1 == Correct direction and 0 == Wrong direction you can change this value it doesn't matter.
         ]
         # Velocity
@@ -77,9 +77,9 @@ class Agent:
     # Obtain move from model!!!
     def get_action(self, state):
         # Update randomness based on number of games
-        self.epsilon = 80 - self.n_games*2
+        self.epsilon = max(0.97 * self.epsilon, 0.05)
         action = [0, 0, 0, 0, 0, 0, 0, 0, 0]
-        if random.randint(0, 100) < self.epsilon:
+        if random.random() < self.epsilon:
             move = random.randint(0, 5)
             action[move] = 1
         else:
@@ -100,8 +100,6 @@ def train():
 
         # get old/current state
         state_old = agent.get_state(game)
-
-        # print(state_old)
 
         # get move
         action = agent.get_action(state_old)
