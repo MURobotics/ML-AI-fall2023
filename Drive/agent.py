@@ -29,12 +29,12 @@ class Agent:
 
         state = [
             int(game.car.vel),
-            game.walldistancearray[0]/50,
-            game.walldistancearray[1]/50,
-            game.walldistancearray[2]/50,
-            game.walldistancearray[3]/50,
-            game.walldistancearray[4]/50,
-            game.walldistancearray[5]/50,
+            game.walldistancearray[0]/50,#right ray distance
+            game.walldistancearray[1]/50,#left ray distance
+            game.walldistancearray[2]/50,#front left ray distance
+            game.walldistancearray[3]/50,#front ray distance
+            game.walldistancearray[4]/50,#front right ray distance
+            game.walldistancearray[5]/50,#rear ray distance
         ]
         # Velocity
         # Angle
