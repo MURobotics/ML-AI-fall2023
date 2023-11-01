@@ -1,7 +1,7 @@
 import torch
 from game import DriveGameAI
 from model import Linear_QNet
-
+import os.path
 
 def get_state(game):#Stole from agent.py
     state = [
@@ -28,6 +28,9 @@ def get_action(state, model):
 def viewModel():#Loads the best model you have saved and displays it.
     game = DriveGameAI()
     model = Linear_QNet(7, 9, 9)
+    if not os.path.isfile("model/bestModel.pt"):
+        print("You don't have a bestModel.pt silly!\nRun agent.py before trying to view a model.")
+        return
     model.load_state_dict(torch.load("model/bestModel.pt"))#Can change the path if you have models saved somewhere else or want to look at different models.
     model.eval()
     while True:#Model plays the game.
