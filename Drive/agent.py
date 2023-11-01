@@ -116,12 +116,12 @@ def train():
         # if new game, save/plot data!
         if game_over:
             agent.n_games += 1
-            agent.train_long_memory()
             if game.gameScore > highScore:
                 highScore = game.gameScore
                 agent.model.save("bestModel.pt")
                 print("High score of:",game.gameScore,"reached!")
             game.resetScore()
+            agent.train_long_memory()
 
 train()
 
