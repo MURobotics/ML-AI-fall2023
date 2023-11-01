@@ -117,11 +117,11 @@ def train():
         if game_over:
             agent.n_games += 1
             if game.gameScore > highScore:
-                highScore = game.gameScore
-                agent.model.save("bestModel.pt")
+                highScore = game.gameScore #updates high score
+                agent.model.save("bestModel.pt")#Saves the model
                 print("High score of:",game.gameScore,"reached!")
-            game.resetScore()
-            agent.train_long_memory()
+            game.resetScore()#Resets score so we can accurately track it's progress.
+            agent.train_long_memory()#Put this here so it doesn't change the model before we want to save it.
 
 train()
 

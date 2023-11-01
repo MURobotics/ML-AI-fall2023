@@ -17,8 +17,7 @@ def get_state(game):#Stole from agent.py
 
 
 def get_action(state, model):
-    # Update randomness based on number of games
-    action = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+    action = [0, 0, 0, 0, 0, 0, 0, 0, 0]#Removed randomness element from get_action, this is all straight AI.
     state0 = torch.tensor(state, dtype=torch.float)
     prediciton = model(state0)
     move = torch.argmax(prediciton).item()
@@ -26,12 +25,12 @@ def get_action(state, model):
 
     return action
 
-def viewModel():
+def viewModel():#Loads the best model you have saved and displays it.
     game = DriveGameAI()
     model = Linear_QNet(7, 9, 9)
-    model.load_state_dict(torch.load("model/bestModel.pt"))
+    model.load_state_dict(torch.load("model/bestModel.pt"))#Can change the path if you have models saved somewhere else or want to look at different models.
     model.eval()
-    while True:
+    while True:#Model plays the game.
         state = get_state(game)
         action = get_action(state,model)
         game.play_move(action)
