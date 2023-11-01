@@ -20,7 +20,7 @@ class Agent:
         self.epsilon = 0.9 # Randomness
         self.gamma = 0.9 # Discount Rate
         self.memory = deque(maxlen=MAX_MEMORY) # popleft() when maxlen is reached
-        self.model = Linear_QNet(8, 9, 9) #Changed number of inputs to 11 to accomodate for new rays and correct direction input.
+        self.model = Linear_QNet(7, 9, 9) #Changed number of inputs to 11 to accomodate for new rays and correct direction input.
         self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
         # TODO: MODEL AND TRAINER
     
@@ -29,16 +29,12 @@ class Agent:
 
         state = [
             int(game.car.vel),
-            # int((game.car.angle % 360)),
-            # int(game.car.x),
-            # int(game.car.y),
-            int(game.walldistancearray[0]),
-            int(game.walldistancearray[1]),
-            int(game.walldistancearray[2]),
-            int(game.walldistancearray[3]),
-            int(game.walldistancearray[4]),
-            int(game.walldistancearray[5]),
-            int(game.car.correctDirection())# 1 == Correct direction and 0 == Wrong direction you can change this value it doesn't matter.
+            game.walldistancearray[0]/50,
+            game.walldistancearray[1]/50,
+            game.walldistancearray[2]/50,
+            game.walldistancearray[3]/50,
+            game.walldistancearray[4]/50,
+            game.walldistancearray[5]/50,
         ]
         # Velocity
         # Angle
@@ -53,7 +49,7 @@ class Agent:
         # Distance to Reward Gate
         # Right direction? - Can maybe remove this and make a negative reward out of this.
         # NOTE: np.array is faster due to homogeneous nature
-        return np.array(state, dtype=int)
+        return state
 
     # Store Memory of previous moves
     def remember(self, state_old, action, reward, state_new, game_over):
@@ -96,6 +92,8 @@ def train():
     agent = Agent()
     game = DriveGameAI()
 
+    highScore = 0
+
     while True:
 
         # get old/current state
@@ -119,6 +117,11 @@ def train():
         if game_over:
             agent.n_games += 1
             agent.train_long_memory()
+            if game.gameScore > highScore:
+                highScore = game.gameScore
+                agent.model.save("bestModel.pt")
+                print("High score of:",game.gameScore,"reached!")
+            game.resetScore()
 
 train()
 

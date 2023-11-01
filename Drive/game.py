@@ -3,33 +3,33 @@ import time
 import math
 from utils import scale_image, blit_rotate_center
 
-DESERT = scale_image(pygame.image.load("imgs/desert.png"), 2)
+DESERT = scale_image(pygame.image.load("Drive/imgs/desert.png"), 2)
 # Edit this scale factor to fit own screen
 TRACK_SCALE_FACTOR = 0.7
-TRACK = scale_image(pygame.image.load("imgs/track.png"), TRACK_SCALE_FACTOR)
-TRACK_BORDER = scale_image(pygame.image.load("imgs/track-border.png"), TRACK_SCALE_FACTOR)
+TRACK = scale_image(pygame.image.load("Drive/imgs/track.png"), TRACK_SCALE_FACTOR)
+TRACK_BORDER = scale_image(pygame.image.load("Drive/imgs/track-border.png"), TRACK_SCALE_FACTOR)
 TRACK_BORDER_MASK = pygame.mask.from_surface(TRACK_BORDER)
 
-INNER_TRACK_BORDER = scale_image(pygame.image.load("imgs/inner-track-border.png"), TRACK_SCALE_FACTOR)
+INNER_TRACK_BORDER = scale_image(pygame.image.load("Drive/imgs/inner-track-border.png"), TRACK_SCALE_FACTOR)
 INNER_TRACK_BORDER_MASK = pygame.mask.from_surface(INNER_TRACK_BORDER)
 
-OUTER_TRACK_BORDER = scale_image(pygame.image.load("imgs/outer-track-border.png"), TRACK_SCALE_FACTOR)
+OUTER_TRACK_BORDER = scale_image(pygame.image.load("Drive/imgs/outer-track-border.png"), TRACK_SCALE_FACTOR)
 OUTER_TRACK_BORDER_MASK = pygame.mask.from_surface(OUTER_TRACK_BORDER)
 
-HORIZONTALLINE =  scale_image(pygame.image.load("imgs/horizontalline.png"),.1)
+HORIZONTALLINE =  scale_image(pygame.image.load("Drive/imgs/horizontalline.png"),.1)
 HORIZONTALLINEMASK = pygame.mask.from_surface(HORIZONTALLINE)
 HORIZONTALLINE.fill(color="blue")
 
-VERTICALLINE = scale_image(pygame.image.load("imgs/verticalline.png"), .2)
+VERTICALLINE = scale_image(pygame.image.load("Drive/imgs/verticalline.png"), .2)
 VERTICALLINEMASK = pygame.mask.from_surface(VERTICALLINE)
 VERTICALLINE.fill(color="blue")
 
-FINISH = pygame.image.load("imgs/finish.png")
+FINISH = pygame.image.load("Drive/imgs/finish.png")
 FINISHMASK = pygame.mask.from_surface(FINISH)
 
 CAR_SCALE_FACTOR = 0.6
-RED_CAR = scale_image(pygame.image.load("imgs/red-car.png"), CAR_SCALE_FACTOR)
-YELLOW_CAR = scale_image(pygame.image.load("imgs/yellow-car.png"), CAR_SCALE_FACTOR)
+RED_CAR = scale_image(pygame.image.load("Drive/imgs/red-car.png"), CAR_SCALE_FACTOR)
+YELLOW_CAR = scale_image(pygame.image.load("Drive/imgs/yellow-car.png"), CAR_SCALE_FACTOR)
 
 # NOTE: May have to change DPI to get screen to fit
 WIDTH, HEIGHT = TRACK.get_width(), TRACK.get_height()
@@ -49,11 +49,14 @@ class Car:
         self.x, self.y = self.START_POS
         self.acceleration = 0.1
         self.rewardgate = 0
+        self.gameScore = 0
     
     def reset(self):
         self.vel = 0
         self.angle = 0
         self.x, self.y = self.START_POS
+        self.gameScore = 0
+        
     
     def rotate(self, left=False, right=False):
         if left:
@@ -213,6 +216,7 @@ class DriveGameAI:
         self.vertGateInd = 32
         self.walldistancearray = [0,0,0,0,0,0]
         self.arrayofrewardgatecoordinates = [(88,170), (89,95), (5,137),(8, 205),(8, 263),(9, 318),(15, 376), (47, 425),(78, 455), (124, 501), (163, 542), (276, 513), (278, 482),(278, 461), (279, 423),(428, 451), (429, 500), (431, 540),(538, 514),(537, 483),(537, 446),(538, 410),(536, 368),(537, 331),(274, 248),(535, 151),(538, 133),(534, 99),(177, 112),(177, 148),(175, 191), (176, 247),(87,24),(275, 531),(386, 336),(517, 531),(474, 246),(406, 247),(401, 164),(502, 165),(496, 18),(406, 19),(298, 18),(173, 282)]
+        self.gameScore = 0
         pygame.display.set_caption("AI Driver!")
         self.reset()
     
@@ -221,6 +225,9 @@ class DriveGameAI:
         self.frame = 0
         self.horzGateInd = 0
         self.vertGateInd = 32
+
+    def resetScore(self):
+        self.gameScore = 0
     
     def setWallDistances(self):
         rays = self.car.cast_rays(TRACK_BORDER_MASK,100)
@@ -277,7 +284,7 @@ class DriveGameAI:
             moved=True
             car.move_forward()
             reward += 1
-        # Change to if for cool speed glitch (hold both up and down arrow)
+
         elif carMove >= 6:
             moved=True
             car.move_backward()
@@ -295,6 +302,8 @@ class DriveGameAI:
             else:
                 self.horzGateInd += 1
             reward += (self.horzGateInd + 1)*100
+            self.gameScore += (self.vertGateInd + 1)*100
+
     
         if(self.car.car_collide(rewardgatemaskarray[self.vertGateInd][0], rewardgatemaskarray[self.vertGateInd][1][0], rewardgatemaskarray[self.vertGateInd][1][1])):
             if(self.vertGateInd == len(rewardgatemaskarray) - 1):
@@ -302,7 +311,8 @@ class DriveGameAI:
             else:
                 self.vertGateInd += 1
             reward += (self.vertGateInd + 1)*100
-        
+            self.gameScore += (self.vertGateInd + 1)*100
+        self.gameScore += reward
         return reward
     
     def checkCarCollision(self):
@@ -349,7 +359,7 @@ class DriveGameAI:
         reward += collisionReward
         if(collisionReward == -10):
             game_over = True
-            reward += -100
+            reward += -1000
             self.reset()
         
         reward += self.checkRewardGateCollisions(rewardgatemaskarray)

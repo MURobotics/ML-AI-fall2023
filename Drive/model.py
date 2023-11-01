@@ -10,13 +10,14 @@ class Linear_QNet(nn.Module):
         super().__init__()
         # 1 layer neural network (only 1 hidden layer)
         self.linear1 = nn.Linear(input_size, hidden_size)
-        self.linear2 = nn.Linear(hidden_size, output_size)
+        self.linear2 = nn.Linear(hidden_size, hidden_size)
+        self.linear3 = nn.Linear(hidden_size,output_size)
     
     # Called when running self.model(state), returning the length-9 output array 
     def forward(self, x):
         x = F.relu(self.linear1(x))
         x = self.linear2(x)
-        return x
+        return self.linear3(x)
     
     # Used to "save" model once trained (for storage on computer)
     # NOTE: this has nothing to do with training the model
