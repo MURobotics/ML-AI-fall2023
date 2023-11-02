@@ -4,6 +4,8 @@ import numpy as np
 from game import DriveGameAI
 from collections import deque
 from model import Linear_QNet, QTrainer
+import matplotlib.pyplot as plt
+from IPython import display
 
 # Distances based on car angle
 # Trey Technique: Inside/Outside Track detection for optimal direction detection
@@ -87,12 +89,28 @@ class Agent:
 
         return action
 
+plt.ion()
+
+def plot(totalScores):
+    display.clear_output(wait = True)
+    plt.plot(totalScores)
+    plt.title("Score over Time")
+    plt.ylabel("Score") 
+    plt.xlabel("Time (games played)") 
+    plt.show()
+
 # Driver Function
 def train():
     agent = Agent()
     game = DriveGameAI()
 
     highScore = 0
+
+    totalScore = 0
+    overallScore = 0
+    averageScore = 0
+    totalScores = []
+    averageScores = []
 
     while True:
 
@@ -113,6 +131,8 @@ def train():
         # remember current move
         agent.remember(state_old, action, reward, state_new, game_over)
 
+        if reward > 0:
+            totalScore += reward
         # if new game, save/plot data!
         if game_over:
             agent.n_games += 1
@@ -121,7 +141,17 @@ def train():
                 agent.model.save("bestModel.pt")#Saves the model
                 print("High score of:",game.gameScore,"reached!")
             game.resetScore()#Resets score so we can accurately track it's progress.
+
+            overallScore += totalScore # overall score is sum of all Scores, used to calculate mean score
+            averageScore = overallScore/agent.n_games # calculate average
+            averageScores.append(averageScore) 
+            totalScores.append(totalScore)
+            plot(totalScores)
+            plot(averageScores)
+
             agent.train_long_memory()#Put this here so it doesn't change the model before we want to save it.
+            totalScore = 0
 
 train()
+
 
