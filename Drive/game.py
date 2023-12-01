@@ -3,6 +3,8 @@ import time
 import math
 from utils import scale_image, blit_rotate_center
 
+
+
 DESERT = scale_image(pygame.image.load("imgs/desert.png"), 2)
 # Edit this scale factor to fit own screen
 TRACK_SCALE_FACTOR = 0.7
@@ -211,6 +213,7 @@ class DriveGameAI:
         self.display = pygame.display.set_mode((WIDTH, HEIGHT))
         self.horzGateInd = 0
         self.vertGateInd = 32
+        self.lapcounter = 1
         self.walldistancearray = [0,0,0,0,0,0]
         self.arrayofrewardgatecoordinates = [(88,170), (89,95), (5,137),(8, 205),(8, 263),(9, 318),(15, 376), (47, 425),(78, 455), (124, 501), (163, 542), (276, 513), (278, 482),(278, 461), (279, 423),(428, 451), (429, 500), (431, 540),(538, 514),(537, 483),(537, 446),(538, 410),(536, 368),(537, 331),(274, 248),(535, 151),(538, 133),(534, 99),(177, 112),(177, 148),(175, 191), (176, 247),(87,24),(275, 531),(386, 336),(517, 531),(474, 246),(406, 247),(401, 164),(502, 165),(496, 18),(406, 19),(298, 18),(173, 282)]
         pygame.display.set_caption("AI Driver!")
@@ -221,6 +224,7 @@ class DriveGameAI:
         self.frame = 0
         self.horzGateInd = 0
         self.vertGateInd = 32
+        self.lapcounter = 1
     
     def setWallDistances(self):
         rays = self.car.cast_rays(TRACK_BORDER_MASK,100)
@@ -258,33 +262,35 @@ class DriveGameAI:
     
         car.draw(win)
     
-    def move_player(self, car, action):
-        reward = -1
-        carMove = 0
-        # print(action)
-        for index in range(0, len(action)):
-            if(action[index] == 1):
-                carMove = index
+    def move_player(self, car, carMove):
+        reward = 0
+        # carMove = 0
+        reward = 0
         moved = False
+        # print(action)
+        # for index in range(0, len(action)):
+        #     if(action[index] == 1):
+        #         carMove = index
+        # moved = False
 
-        if carMove % 3 == 0:
+        if carMove  == 0:
             # print("LEFT")
             car.rotate(left=True)
-        if carMove % 3 == 2:
+        if carMove == 2:
             # print("RIGHT")
             car.rotate(right=True)
-        if carMove <= 2:
+        if carMove ==1:
             moved=True
             car.move_forward()
             reward += 1
         # Change to if for cool speed glitch (hold both up and down arrow)
-        elif carMove >= 6:
-            moved=True
-            car.move_backward()
+        # elif carMove >= 6:
+        #     moved=True
+        #     car.move_backward()
         
         if not moved:
+            #reward -= 10
             car.reduce_speed()
-        
         return reward
     
     def checkRewardGateCollisions(self, rewardgatemaskarray):
@@ -294,14 +300,22 @@ class DriveGameAI:
                 self.horzGateInd = 0
             else:
                 self.horzGateInd += 1
-            reward += (self.horzGateInd + 1)*100
+            reward += 1000*(self.horzGateInd + 1) * self.lapcounter
     
-        if(self.car.car_collide(rewardgatemaskarray[self.vertGateInd][0], rewardgatemaskarray[self.vertGateInd][1][0], rewardgatemaskarray[self.vertGateInd][1][1])):
+        elif(self.car.car_collide(rewardgatemaskarray[self.vertGateInd][0], rewardgatemaskarray[self.vertGateInd][1][0], rewardgatemaskarray[self.vertGateInd][1][1])):
             if(self.vertGateInd == len(rewardgatemaskarray) - 1):
                 self.vertGateInd = 32
+                reward += 1000000000 * self.lapcounter
+                print("lap completed")
+                self.lapcounter += 1
+                self.vertGateInd = 32
+                self.horzGateInd = 0
             else:
                 self.vertGateInd += 1
-            reward += (self.vertGateInd + 1)*100
+            reward += 1000*(self.vertGateInd  + 1) * self.lapcounter
+                
+            
+        
         
         return reward
     
@@ -309,7 +323,8 @@ class DriveGameAI:
         reward = 0
         if(self.car.car_collide(TRACK_BORDER_MASK) != None):
             self.car.bounce()
-            reward = -10
+            reward = -1000
+            self.reset()
         return reward
     
     def play_move(self, action):
@@ -322,9 +337,8 @@ class DriveGameAI:
         reward = 0
 
         # Must reset if AI gets stuck
-        if self.frame > 2000:
+        if self.frame > 3000:
             game_over = True
-            reward += -100
             self.reset()
 
         # Updates new drawings/changes
@@ -339,25 +353,21 @@ class DriveGameAI:
 
         self.draw(self.display, self.images, self.car)
 
-        # pygame.draw.circle(color="red", center=(self.car.x, self.car.y), surface=TRACK, radius=1)
 
         rewardgatemaskarray, rewardgatemaskcoordinatearray = self.drawRewardGates(self.display)
 
         self.setWallDistances()
 
-        collisionReward = self.checkCarCollision()
-        reward += collisionReward
-        if(collisionReward == -10):
+        reward += self.checkCarCollision()
+        if (reward < 0 ):
             game_over = True
-            reward += -100
-            self.reset()
+       
         
         reward += self.checkRewardGateCollisions(rewardgatemaskarray)
         
         self.car.move()
 
-        # if(reward != 0):
-        #     print(reward)
+
 
         return reward, game_over
 

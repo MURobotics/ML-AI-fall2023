@@ -1,106 +1,131 @@
+#tutorials used to help write this program:
+# https://www.youtube.com/watch?v=wc-FxNENg9U
+# https://www.youtube.com/watch?v=L8ypSXwyBds
+# https://www.youtube.com/watch?v=L3ktUWfAMPg
+
 import torch
 import random
 import numpy as np
 from game import DriveGameAI
 from collections import deque
 from model import Linear_QNet, QTrainer
+import math
 
-# Distances based on car angle
-# Trey Technique: Inside/Outside Track detection for optimal direction detection
-# Delete Some Inputs????
-# 
 
-MAX_MEMORY = 100_000
-BATCH_SIZE = 1000
-LR = 0.001
+
+MAX_MEMORY = 100000
+BATCH_SIZE = 64
+LR = .001
 
 class Agent:
     def __init__(self):
         self.n_games = 0 # Number of Games Played
         self.epsilon = 0.9 # Randomness
-        self.gamma = 0.9 # Discount Rate
-        self.memory = deque(maxlen=MAX_MEMORY) # popleft() when maxlen is reached
-        self.model = Linear_QNet(8, 9, 9) #Changed number of inputs to 11 to accomodate for new rays and correct direction input.
-        self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
-        # TODO: MODEL AND TRAINER
+        self.epsilonend = .1
+        self.epsilondecay = 5e-4
+        self.gamma = 0.99 # Discount Rate
+        self.policynet = Linear_QNet(7, 50, 3)
+        self.trainer = QTrainer(self.policynet, lr=LR)
+        #self.policynet.load_state_dict(torch.load("model/model.pth")) uncomment this  to load a saved model
+        #self.trainer.optimizer.load_state_dict(torch.load("model/optimizer.pth")) uncomment this to load a saved optimizer
+
+        #memory setup
+        self.mem_size = MAX_MEMORY
+        self.state_memory = np.zeros((self.mem_size, 7), dtype=np.float32)
+        self.new_state_memory = np.zeros((self.mem_size, 7), dtype = np.float32)
+        self.action_memory = np.zeros((self.mem_size), dtype=np.int32)
+        self.reward_memory = np.zeros(self.mem_size, dtype=np.float32)
+        self.terminal_memory = np.zeros(self.mem_size, dtype=bool)
+        self.mem_cntr = 0
+        
     
     # Use game to get state!
     def get_state(self, game):
 
         state = [
-            int(game.car.vel),
-            # int((game.car.angle % 360)),
-            # int(game.car.x),
-            # int(game.car.y),
-            int(game.walldistancearray[0]),
-            int(game.walldistancearray[1]),
-            int(game.walldistancearray[2]),
-            int(game.walldistancearray[3]),
-            int(game.walldistancearray[4]),
-            int(game.walldistancearray[5]),
-            int(game.car.correctDirection())# 1 == Correct direction and 0 == Wrong direction you can change this value it doesn't matter.
+            (game.car.vel ),
+            #((game.car.angle % 360)/ 36),
+            #(game.car.x / 10),
+            #(game.car.y / 10),
+            (game.walldistancearray[0]),
+            (game.walldistancearray[1]),
+            (game.walldistancearray[2]),
+            (game.walldistancearray[3]),
+            (game.walldistancearray[4]),
+            (game.walldistancearray[5]),
+            #(game.car.correctDirection())# 1 == Correct direction and 0 == Wrong direction you can change this value it doesn't matter.
         ]
-        # Velocity
-        # Angle
-        # X
-        # Y
-        # Left Distance
-        # Right Distance
-        # Forward Left Distance - This is new
-        # Forward Distance
-        # Forward Right Distance - and this new
-        # Down Distance
-        # Distance to Reward Gate
-        # Right direction? - Can maybe remove this and make a negative reward out of this.
-        # NOTE: np.array is faster due to homogeneous nature
-        return np.array(state, dtype=int)
+        return state
 
     # Store Memory of previous moves
     def remember(self, state_old, action, reward, state_new, game_over):
-        self.memory.append((state_old, action, reward, state_new, game_over))
+        index = self.mem_cntr % MAX_MEMORY
+        self.state_memory[index] = state_old
+        self.new_state_memory[index] = state_new
+        self.reward_memory[index] = reward
+        self.action_memory[index] = action
+        self.terminal_memory[index] = game_over
+        self.mem_cntr +=1
 
-    # Training current state / information
-    def train_short_memory(self, state, action, reward, next_state, done):
-        self.trainer.train_step(state, action, reward, next_state, done)
-    
-    # Training batch of past
-    def train_long_memory(self):
-        if len(self.memory) > BATCH_SIZE:
-            mini_sample = random.sample(self.memory, BATCH_SIZE) # list of tuples
-        else:
-            mini_sample = self.memory
-        
-        # Tuples
-        states, actions, rewards, next_states, dones = zip(*mini_sample)
-        self.trainer.train_step(states, actions, rewards, next_states, dones)
         
     # Obtain move from model!!!
     def get_action(self, state):
-        # Update randomness based on number of games
-        self.epsilon = max(0.97 * self.epsilon, 0.05)
-        action = [0, 0, 0, 0, 0, 0, 0, 0, 0]
-        if random.random() < self.epsilon:
-            move = random.randint(0, 5)
+        action = [0, 0, 0]
+        if random.random() <= self.epsilon:
+            move = random.randint(0, 2)
             action[move] = 1
+            #print(f"random move selected  {move}      {self.epsilon}")
         else:
             state0 = torch.tensor(state, dtype=torch.float)
-            prediciton = self.model(state0)
-            move = torch.argmax(prediciton).item()
+            actions = self.policynet.forward(state0)
+            move = torch.argmax(actions).item()
             action[move] = 1
-            # print(action)
+            #print(f"selected move {move}              {self.epsilon}")
 
-        return action
+        return move
+    
+
+    #model learns from past states.
+    def train_step(self, state_memory, new_state_memory, reward_memory, terminal_memory,action_memory, max_memory, batch_size):
+        if self.mem_cntr < batch_size:
+            return
+        self.trainer.optimizer.zero_grad()
+        max_mem = min(self.mem_cntr, max_memory)
+        batch = np.random.choice(max_mem, batch_size, replace = False)
+        batch_index = np.arange(batch_size, dtype=np.int32)
+        state_batch = torch.tensor(state_memory[batch])
+        new_state_batch = torch.tensor(new_state_memory[batch])
+        reward_batch = torch.tensor(reward_memory[batch])
+        terminal_batch = torch.tensor(terminal_memory[batch])
+        action_batch = action_memory[batch]
+
+        
+        q_eval = self.policynet.forward(state_batch)[batch_index,action_batch]
+        q_next = self.policynet.forward(new_state_batch) 
+        
+
+        q_next[terminal_batch] = 0.0
+        q_target = reward_batch + self.gamma * torch.max(q_next,dim=1)[0]
+
+        
+        loss = self.trainer.criterion((q_target),(q_eval))
+        loss.backward()
+        self.trainer.optimizer.step()
+        
+
+      
+
 
 # Driver Function
 def train():
     agent = Agent()
     game = DriveGameAI()
-
+    best_episode_score=0
+    episode_score=0
     while True:
-
+       
         # get old/current state
         state_old = agent.get_state(game)
-
         # get move
         action = agent.get_action(state_old)
 
@@ -109,16 +134,29 @@ def train():
         reward, game_over = game.play_move(action)
         state_new = agent.get_state(game)
 
-        # train short memory
-        agent.train_short_memory(state_old, action, reward, state_new, game_over)
+       
 
         # remember current move
         agent.remember(state_old, action, reward, state_new, game_over)
 
+        agent.train_step(agent.state_memory, agent.new_state_memory,agent.reward_memory,agent.terminal_memory,agent.action_memory, MAX_MEMORY, BATCH_SIZE)
         # if new game, save/plot data!
+        episode_score += reward
         if game_over:
             agent.n_games += 1
-            agent.train_long_memory()
+            #uncomment this block to save agent and optimizer.
+            # if(episode_score > best_episode_score):
+            #     best_episode_score = episode_score
+            #     agent.policynet.save()
+            #     torch.save(agent.trainer.optimizer.state_dict(),"./model/optimizer.pth")
+            #     print(f"agent and optimizer saved")
+            #     print(episode_score)
+            episode_score=0
+        if (agent.epsilon > agent.epsilonend):
+            agent.epsilon = agent.epsilon - agent.epsilondecay
+        else:
+            agent.epsilon = agent.epsilonend
+        
 
 train()
 
